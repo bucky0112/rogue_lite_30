@@ -3,7 +3,7 @@ use crate::components::*;
 use crate::constants::*;
 
 pub fn setup(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    commands.spawn((Camera2d, CameraFollow::new(CAMERA_FOLLOW_SPEED),));
 }
 
 pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
