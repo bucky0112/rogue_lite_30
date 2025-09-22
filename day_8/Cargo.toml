@@ -1,0 +1,8 @@
+[package]
+name = "day8"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = "0.16.1"
+rand = "0.8.5"
