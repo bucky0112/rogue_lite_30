@@ -1,0 +1,169 @@
+use bevy::prelude::Color;
+
+pub const PLAYER_SPEED: f32 = 300.0;
+pub const PLAYER_SCALE: f32 = 4.0;
+pub const PLAYER_INITIAL_HEALTH: i32 = 100;
+pub const PLAYER_MAX_STAMINA: f32 = 100.0;
+pub const PLAYER_STAMINA_REGEN_PER_SECOND: f32 = 25.0;
+pub const PLAYER_ATTACK_STAMINA_COST: f32 = 35.0;
+pub const PLAYER_MAX_LEVEL: usize = 3;
+pub const PLAYER_LEVEL_XP_REQUIREMENTS: [u32; PLAYER_MAX_LEVEL] = [120, 240, 420];
+pub const PLAYER_LEVEL_BASE_ATTACK: [i32; PLAYER_MAX_LEVEL + 1] = [15, 24, 34, 46];
+pub const PLAYER_LEVEL_BASE_DEFENSE: [i32; PLAYER_MAX_LEVEL + 1] = [4, 7, 11, 16];
+pub const PLAYER_LEVEL_SPRITE_PATHS: [&str; PLAYER_MAX_LEVEL + 1] = [
+    "characters/players/knight_lv0.png",
+    "characters/players/knight_lv1.png",
+    "characters/players/knight_lv2.png",
+    "characters/players/knight_lv3.png",
+];
+pub const PLAYER_POISON_TICK_SECONDS: f32 = 1.25;
+pub const PLAYER_POISON_TICK_DAMAGE: i32 = 3;
+pub const PLAYER_HEALTH_BAR_WIDTH: f32 = 220.0;
+pub const PLAYER_HEALTH_BAR_HEIGHT: f32 = 22.0;
+pub const PLAYER_HEALTH_BAR_MARGIN: f32 = 18.0;
+pub const PLAYER_STAMINA_BAR_WIDTH: f32 = PLAYER_HEALTH_BAR_WIDTH;
+pub const PLAYER_STAMINA_BAR_HEIGHT: f32 = 18.0;
+pub const PLAYER_STAMINA_BAR_TOP_OFFSET: f32 =
+    PLAYER_HEALTH_BAR_MARGIN + PLAYER_HEALTH_BAR_HEIGHT + 10.0;
+pub const PLAYER_STATUS_TEXT_TOP_OFFSET: f32 =
+    PLAYER_STAMINA_BAR_TOP_OFFSET + PLAYER_STAMINA_BAR_HEIGHT + 6.0;
+pub const PLAYER_DEATH_DISPLAY_SECONDS: f32 = 2.5;
+pub const PLAYER_DEATH_MESSAGE: &str = "YOU DIED";
+pub const PLAYER_DEATH_FONT_PATH: &str = "fonts/NotoSans-Regular.ttf";
+pub const PLAYER_DEATH_FONT_SIZE: f32 = 96.0;
+pub const PLAYER_DEATH_TEXT_COLOR: [f32; 4] = [0.86, 0.2, 0.18, 1.0];
+pub const PLAYER_DEATH_OVERLAY_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 0.65];
+
+pub const PLAYER_STATS_FONT_PATH: &str = "fonts/NotoSans-Regular.ttf";
+pub const PLAYER_STATS_FONT_SIZE: f32 = 20.0;
+pub const PLAYER_STATS_PANEL_WIDTH: f32 = 360.0;
+pub const PLAYER_STATS_PANEL_HEIGHT: f32 = 190.0;
+pub const PLAYER_STATS_PANEL_TOP_OFFSET: f32 = PLAYER_STATUS_TEXT_TOP_OFFSET + 36.0;
+pub const PLAYER_STATS_PANEL_LEFT_OFFSET: f32 = PLAYER_HEALTH_BAR_MARGIN;
+
+pub const WEAPON_SCALE: f32 = 1.0;
+pub const WEAPON_IDLE_OFFSET_X: f32 = 10.0;
+pub const WEAPON_IDLE_OFFSET_Y: f32 = 2.0;
+pub const WEAPON_Z: f32 = 1.0;
+pub const PLAYER_ATTACK_RADIUS: f32 = 48.0;
+pub const PLAYER_ATTACK_FACING_COS_THRESHOLD: f32 = 0.25;
+pub const ATTACK_RETICLE_SPRITE_PATH: &str = "reticle/reticle_aiming.png";
+pub const ATTACK_RETICLE_DISTANCE: f32 = ROOM_TILE_SIZE * PLAYER_SCALE;
+pub const ATTACK_RETICLE_Z_OFFSET: f32 = -1.0;
+
+pub const SHIELD_SCALE: f32 = 1.0;
+pub const SHIELD_OFFSET_X: f32 = -8.0;
+pub const SHIELD_OFFSET_Y: f32 = -1.0;
+pub const SHIELD_Z: f32 = 1.0;
+
+pub const ITEM_RANDOM_PICKUP_COUNT: usize = 6;
+pub const ITEM_PICKUP_DISTANCE: f32 = 28.0;
+pub const ITEM_PICKUP_SCALE: f32 = 2.5;
+pub const ITEM_PICKUP_Z: f32 = 12.0;
+pub const ITEM_PICKUP_Z_OFFSET: f32 = 6.0;
+pub const ITEM_HEALTH_POTION_HEAL_AMOUNT: i32 = 40;
+pub const ITEM_STAMINA_POTION_AMOUNT: f32 = 60.0;
+
+pub const CHEST_SPAWN_COUNT: usize = 4;
+pub const CHEST_INTERACTION_RADIUS: f32 = ROOM_TILE_SIZE * PLAYER_SCALE * 1.2;
+pub const CHEST_SCALE: f32 = 4.0;
+pub const CHEST_Z: f32 = 9.0;
+pub const CHEST_ITEM_REVEAL_SECONDS: f32 = 2.0;
+pub const CHEST_MIMIC_PROBABILITY: f32 = 0.25;
+pub const CHEST_MIMIC_TRIGGER_RADIUS: f32 = 120.0;
+pub const CHEST_MIMIC_LEASH_RADIUS: f32 = 160.0;
+pub const CHEST_MIMIC_PATROL_RANGE: f32 = 20.0;
+pub const CHEST_MIMIC_CHASE_SPEED: f32 = 90.0;
+pub const CHEST_MIMIC_HEALTH: i32 = 65;
+pub const CHEST_MIMIC_ATTACK: i32 = 12;
+pub const CHEST_MIMIC_DEFENSE: i32 = 4;
+pub const CHEST_MIMIC_ATTACK_RADIUS: f32 = 32.0;
+pub const CHEST_MIMIC_ATTACK_COOLDOWN: f32 = 1.4;
+pub const CHEST_ITEM_DISPLAY_OFFSET: f32 = 20.0;
+pub const CHEST_ITEM_DISPLAY_SCALE: f32 = 1.25;
+
+pub const DOOR_INTERACTION_RADIUS: f32 = ROOM_TILE_SIZE * PLAYER_SCALE * 1.5;
+pub const DOOR_INTERACTION_FACING_COS_THRESHOLD: f32 = 0.5;
+pub const LEVEL_EXIT_INTERACTION_RADIUS: f32 = ROOM_TILE_SIZE * PLAYER_SCALE * 2.0;
+
+pub const CAMERA_FOLLOW_SPEED: f32 = 3.0;
+
+pub const GRID_SIZE: usize = 20;
+pub const TILE_SIZE: f32 = 32.0;
+
+pub const ROOM_TILE_SIZE: f32 = 16.0;
+pub const WORLD_HALF_WIDTH_TILES: i32 = 12;
+pub const WORLD_HALF_HEIGHT_TILES: i32 = 9;
+pub const WORLD_BOUNDARY_PADDING_TILES: i32 = 1;
+pub const Z_LAYER_GRID: f32 = 0.0;
+pub const WORLD_OUTDOOR_FLOOR_Z: f32 = Z_LAYER_GRID - 0.1;
+pub const ENVIRONMENT_PROP_Z: f32 = Z_LAYER_GRID + 5.0;
+pub const ENVIRONMENT_PROP_SCALE: f32 = 4.0;
+
+pub const INPUT_DEADZONE: f32 = 0.1;
+
+pub const SLIME_SCALE: f32 = 4.0;
+pub const SLIME_HEALTH: i32 = 35;
+pub const SLIME_PATROL_RANGE: f32 = 120.0;
+pub const SLIME_PATROL_SPEED: f32 = 60.0;
+pub const SLIME_CHASE_SPEED: f32 = 90.0;
+pub const SLIME_ALERT_RADIUS: f32 = 200.0;
+pub const SLIME_LEASH_RADIUS: f32 = 260.0;
+pub const SLIME_BASE_ATTACK: i32 = 5;
+pub const SLIME_BASE_DEFENSE: i32 = 2;
+pub const SLIME_EXPERIENCE_REWARD: u32 = 30;
+pub const SLIME_ATTACK_RADIUS: f32 = 28.0;
+pub const SLIME_ATTACK_COOLDOWN: f32 = 1.0;
+
+pub const CYCLOPS_SCALE: f32 = 4.5;
+pub const CYCLOPS_HEALTH: i32 = 80;
+pub const CYCLOPS_PATROL_RANGE: f32 = 140.0;
+pub const CYCLOPS_PATROL_SPEED: f32 = 55.0;
+pub const CYCLOPS_CHASE_SPEED: f32 = 85.0;
+pub const CYCLOPS_ALERT_RADIUS: f32 = 220.0;
+pub const CYCLOPS_LEASH_RADIUS: f32 = 220.0;
+pub const CYCLOPS_BASE_ATTACK: i32 = 12;
+pub const CYCLOPS_BASE_DEFENSE: i32 = 6;
+pub const CYCLOPS_EXPERIENCE_REWARD: u32 = 90;
+pub const CYCLOPS_WINDUP_SECONDS: f32 = 0.6;
+pub const CYCLOPS_CHARGE_SECONDS: f32 = 0.45;
+pub const CYCLOPS_CHARGE_MULTIPLIER: f32 = 2.2;
+pub const CYCLOPS_COOLDOWN_SECONDS: f32 = 1.2;
+
+pub const WIZARD_BOSS_SCALE: f32 = 4.5;
+pub const WIZARD_BOSS_HEALTH: i32 = 180;
+pub const WIZARD_BOSS_PATROL_RANGE: f32 = 40.0;
+pub const WIZARD_BOSS_PATROL_SPEED: f32 = 45.0;
+pub const WIZARD_BOSS_CHASE_SPEED: f32 = 75.0;
+pub const WIZARD_BOSS_ALERT_RADIUS: f32 = 200.0;
+pub const WIZARD_BOSS_LEASH_RADIUS: f32 = 260.0;
+pub const WIZARD_BOSS_BASE_ATTACK: i32 = 20;
+pub const WIZARD_BOSS_BASE_DEFENSE: i32 = 10;
+pub const WIZARD_BOSS_ATTACK_RADIUS: f32 = 260.0;
+pub const WIZARD_BOSS_ATTACK_COOLDOWN: f32 = 0.9;
+pub const WIZARD_BOSS_EXPERIENCE_REWARD: u32 = 250;
+pub const WIZARD_BOSS_SPRITE_PATH: &str = "characters/enemies/wizard.png";
+pub const WIZARD_BOSS_STAFF_SPRITE_PATH: &str = "weapons/enemy/wizard_staff.png";
+pub const WIZARD_BOSS_STAFF_OFFSET_X: f32 = 8.5;
+pub const WIZARD_BOSS_STAFF_OFFSET_Y: f32 = -2.0;
+pub const WIZARD_BOSS_STAFF_OFFSET_Z: f32 = 1.0;
+pub const WIZARD_BOSS_STAFF_SCALE: f32 = 1.0;
+pub const WIZARD_BOSS_CAST_MIN_DISTANCE: f32 = 140.0;
+pub const WIZARD_BOSS_CAST_HEIGHT_OFFSET: f32 = 4.0;
+pub const WIZARD_BOSS_PROJECTILE_SPEED: f32 = 360.0;
+pub const WIZARD_BOSS_PROJECTILE_LIFETIME: f32 = 2.0;
+pub const WIZARD_BOSS_PROJECTILE_SIZE: f32 = 18.0;
+pub const WIZARD_BOSS_PROJECTILE_HIT_RADIUS: f32 = 24.0;
+pub const WIZARD_BOSS_PROJECTILE_COLOR: Color = Color::srgb(0.72, 0.28, 0.92);
+
+pub const ENEMY_HEALTH_BAR_WIDTH: f32 = 50.0;
+pub const ENEMY_HEALTH_BAR_HEIGHT: f32 = 6.0;
+pub const ENEMY_HEALTH_BAR_OFFSET_Y: f32 = 48.0;
+
+pub const MIMIC_EXPERIENCE_REWARD: u32 = 110;
+
+pub const PLAYER_DAMAGE_FLASH_COUNT: u8 = 4;
+pub const PLAYER_DAMAGE_FLASH_INTERVAL: f32 = 0.08;
+pub const PLAYER_DAMAGE_FLASH_COLOR: [f32; 4] = [1.0, 0.4, 0.4, 1.0];
+
+pub const ENEMY_DEATH_FADE_SECONDS: f32 = 0.45;
