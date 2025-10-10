@@ -1,0 +1,153 @@
+use crate::components::*;
+use crate::constants::*;
+use bevy::prelude::*;
+
+#[derive(Event, Debug, Clone, Copy)]
+pub struct ShieldEquipEvent {
+    pub kind: ShieldKind,
+}
+
+#[derive(Event, Debug, Clone, Copy)]
+pub struct WeaponEquipEvent {
+    pub kind: WeaponKind,
+}
+
+pub fn handle_shield_equip_events(
+    mut commands: Commands,
+    mut events: EventReader<ShieldEquipEvent>,
+    mut player_query: Query<
+        (
+            Entity,
+            &mut Defense,
+            Option<&EquippedShield>,
+            Option<&Children>,
+        ),
+        With<Player>,
+    >,
+    asset_server: Res<AssetServer>,
+    shield_visuals: Query<Entity, With<ShieldVisual>>,
+) {
+    let Some((player_entity, mut defense, equipped, children)) = player_query.iter_mut().next()
+    else {
+        events.clear();
+        return;
+    };
+
+    let mut current_bonus = equipped.map(|shield| shield.defense_bonus).unwrap_or(0);
+    let mut cleaned_visuals = false;
+    let mut equipped_any = false;
+
+    for event in events.read() {
+        let new_bonus = event.kind.defense_bonus();
+        let delta = new_bonus - current_bonus;
+
+        if delta != 0 {
+            defense.adjust_bonus(delta);
+        }
+
+        commands
+            .entity(player_entity)
+            .insert(EquippedShield::new(event.kind));
+
+        if !cleaned_visuals {
+            if let Some(children) = children {
+                for child in children.iter() {
+                    if shield_visuals.get(child).is_ok() {
+                        commands.entity(child).despawn();
+                    }
+                }
+            }
+            cleaned_visuals = true;
+        }
+
+        let shield_entity = commands
+            .spawn((
+                ShieldVisual,
+                Sprite::from_image(asset_server.load(event.kind.sprite_path())),
+                Transform::from_translation(Vec3::new(SHIELD_OFFSET_X, SHIELD_OFFSET_Y, SHIELD_Z))
+                    .with_scale(Vec3::splat(SHIELD_SCALE)),
+                Name::new(format!("Equipped{}", event.kind.display_name())),
+            ))
+            .id();
+
+        commands.entity(player_entity).add_child(shield_entity);
+
+        current_bonus = new_bonus;
+        equipped_any = true;
+    }
+
+    if equipped_any {
+        info!("Shield equipped; current defense: {}", defense.value());
+    }
+}
+
+pub fn handle_weapon_equip_events(
+    mut commands: Commands,
+    mut events: EventReader<WeaponEquipEvent>,
+    mut player_query: Query<
+        (Entity, &mut Attack, &mut EquippedWeapon, Option<&Children>),
+        With<Player>,
+    >,
+    mut weapon_query: Query<(Entity, &mut WeaponSprites, &mut Sprite), With<Weapon>>,
+    asset_server: Res<AssetServer>,
+) {
+    let Some((_player_entity, mut attack, mut equipped_weapon, children)) =
+        player_query.iter_mut().next()
+    else {
+        events.clear();
+        return;
+    };
+
+    let mut current_bonus = equipped_weapon.attack_bonus;
+    let mut applied_any = false;
+
+    for event in events.read() {
+        let new_bonus = event.kind.attack_bonus();
+        let delta = new_bonus - current_bonus;
+
+        if delta != 0 {
+            attack.adjust_bonus(delta);
+        }
+
+        *equipped_weapon = EquippedWeapon::new(event.kind);
+
+        let mut updated_weapon = false;
+        if let Some(children) = children {
+            for child in children.iter() {
+                let weapon_entity = child.clone();
+                if let Ok((entity, mut weapon_sprites, mut sprite)) =
+                    weapon_query.get_mut(weapon_entity)
+                {
+                    let right_handle = asset_server.load(event.kind.right_sprite_path());
+                    let left_handle = asset_server.load(event.kind.left_sprite_path());
+
+                    weapon_sprites.right_sprite = right_handle.clone();
+                    weapon_sprites.left_sprite = left_handle.clone();
+                    sprite.image = right_handle.clone();
+
+                    commands
+                        .entity(entity)
+                        .insert(Name::new(format!("Equipped{}", event.kind.display_name())));
+
+                    updated_weapon = true;
+                    break;
+                }
+            }
+        }
+
+        if !updated_weapon {
+            warn!("Unable to find the player's weapon entity; skipping sprite update");
+        }
+
+        current_bonus = new_bonus;
+        applied_any = true;
+    }
+
+    if applied_any {
+        info!(
+            "Weapon equipped; current attack: {} ({})",
+            attack.value(),
+            equipped_weapon.kind.display_name()
+        );
+    }
+}
