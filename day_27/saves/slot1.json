@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "level_index": 0,
+  "player_health": 94,
+  "player_max_health": 100,
+  "player_level": 1,
+  "player_experience": 60,
+  "equipped_weapon": "Level1",
+  "equipped_shield": "Level2"
+}

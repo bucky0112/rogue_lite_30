@@ -1,0 +1,330 @@
+use crate::components::*;
+use crate::constants::*;
+use crate::resources::PlayerDeathState;
+use crate::systems::health::{PlayerDiedEvent, PlayerRespawnedEvent};
+use bevy::prelude::*;
+use bevy::sprite::Anchor;
+use bevy::text::{JustifyText, TextColor, TextFont, TextLayout};
+use bevy::ui::{
+    AlignItems, BackgroundColor, BorderColor, Display, JustifyContent, Node, PositionType, UiRect,
+    Val,
+};
+
+pub fn setup_player_health_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands
+        .spawn((
+            PlayerHealthUiRoot,
+            Node {
+                width: Val::Px(PLAYER_HEALTH_BAR_WIDTH),
+                height: Val::Px(PLAYER_HEALTH_BAR_HEIGHT),
+                position_type: PositionType::Absolute,
+                top: Val::Px(PLAYER_HEALTH_BAR_MARGIN),
+                left: Val::Px(PLAYER_HEALTH_BAR_MARGIN),
+                border: UiRect::all(Val::Px(2.0)),
+                ..Default::default()
+            },
+            BackgroundColor(Color::srgba(0.08, 0.08, 0.1, 0.9)),
+            BorderColor(Color::srgba(0.02, 0.02, 0.02, 1.0)),
+            Name::new("PlayerHealthBar"),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                PlayerHealthUiFill,
+                Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    ..Default::default()
+                },
+                BackgroundColor(Color::srgba(0.84, 0.16, 0.18, 1.0)),
+                Name::new("PlayerHealthFill"),
+            ));
+        });
+
+    commands
+        .spawn((
+            PlayerStaminaUiRoot,
+            Node {
+                width: Val::Px(PLAYER_STAMINA_BAR_WIDTH),
+                height: Val::Px(PLAYER_STAMINA_BAR_HEIGHT),
+                position_type: PositionType::Absolute,
+                top: Val::Px(PLAYER_STAMINA_BAR_TOP_OFFSET),
+                left: Val::Px(PLAYER_HEALTH_BAR_MARGIN),
+                border: UiRect::all(Val::Px(1.5)),
+                ..Default::default()
+            },
+            BackgroundColor(Color::srgba(0.06, 0.1, 0.08, 0.9)),
+            BorderColor(Color::srgba(0.02, 0.04, 0.03, 1.0)),
+            Name::new("PlayerStaminaBar"),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                PlayerStaminaUiFill,
+                Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    ..Default::default()
+                },
+                BackgroundColor(Color::srgba(0.18, 0.66, 0.32, 1.0)),
+                Name::new("PlayerStaminaFill"),
+            ));
+        });
+
+    commands
+        .spawn((Name::new("PlayerStatusTextRoot"), Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(PLAYER_STATUS_TEXT_TOP_OFFSET),
+            left: Val::Px(PLAYER_HEALTH_BAR_MARGIN),
+            ..Default::default()
+        }))
+        .with_children(|parent| {
+            parent.spawn((
+                PlayerStatusText,
+                Text::new(""),
+                TextFont {
+                    font: asset_server.load(PLAYER_STATS_FONT_PATH),
+                    font_size: 18.0,
+                    ..Default::default()
+                },
+                TextColor(Color::srgb(0.85, 0.83, 0.76)),
+            ));
+        });
+}
+
+pub fn update_player_health_ui(
+    player_query: Query<&Health, With<Player>>,
+    mut fill_query: Query<&mut Node, With<PlayerHealthUiFill>>,
+) {
+    let Some(health) = player_query.iter().next() else {
+        return;
+    };
+
+    let Some(mut node) = fill_query.iter_mut().next() else {
+        return;
+    };
+
+    if health.max <= 0 {
+        node.width = Val::Percent(0.0);
+        return;
+    }
+
+    let ratio = (health.current as f32).clamp(0.0, health.max as f32) / health.max as f32;
+    node.width = Val::Percent((ratio * 100.0).clamp(0.0, 100.0));
+}
+
+pub fn update_player_stamina_ui(
+    player_query: Query<&Stamina, (With<Player>, Without<PlayerDead>)>,
+    mut fill_query: Query<&mut Node, With<PlayerStaminaUiFill>>,
+) {
+    let Some(stamina) = player_query.iter().next() else {
+        return;
+    };
+
+    let Some(mut node) = fill_query.iter_mut().next() else {
+        return;
+    };
+
+    node.width = Val::Percent((stamina.fraction() * 100.0).clamp(0.0, 100.0));
+}
+
+pub fn update_player_status_text(
+    player_query: Query<Option<&Poisoned>, (With<Player>, Without<PlayerDead>)>,
+    mut text_query: Query<(&mut Text, &mut TextColor), With<PlayerStatusText>>,
+) {
+    let Some((mut text, mut color)) = text_query.iter_mut().next() else {
+        return;
+    };
+
+    let Some(poison_state) = player_query.iter().next() else {
+        *text = Text::new("");
+        color.0 = Color::srgb(0.78, 0.78, 0.72);
+        return;
+    };
+
+    match poison_state {
+        Some(_) => {
+            *text = Text::new("Space: Attack / Interact | Esc: Pause\nPoisoned: HP -3 per tick");
+            color.0 = Color::srgb(0.95, 0.38, 0.32);
+        }
+        None => {
+            *text = Text::new(
+                "Space: Attack / Interact | Esc: Pause\nRelease Space to recover stamina",
+            );
+            color.0 = Color::srgb(0.78, 0.78, 0.72);
+        }
+    }
+}
+
+pub fn spawn_enemy_health_bars(
+    mut commands: Commands,
+    query: Query<(Entity, &Transform, &Health), (With<Enemy>, Added<Enemy>)>,
+) {
+    for (enemy_entity, transform, health) in &query {
+        if health.max <= 0 {
+            continue;
+        }
+
+        let offset = Vec3::new(0.0, ENEMY_HEALTH_BAR_OFFSET_Y, 6.0);
+        let base_translation = transform.translation + offset;
+
+        commands
+            .spawn((
+                EnemyHealthBarRoot,
+                HealthBarFollow::new(enemy_entity, offset),
+                Transform::from_translation(base_translation),
+                Name::new("EnemyHealthBar"),
+            ))
+            .with_children(|parent| {
+                parent.spawn((
+                    Sprite::from_color(
+                        Color::srgba(0.08, 0.08, 0.08, 0.85),
+                        Vec2::new(ENEMY_HEALTH_BAR_WIDTH, ENEMY_HEALTH_BAR_HEIGHT),
+                    ),
+                    Name::new("EnemyHealthBack"),
+                ));
+
+                let mut fill_sprite = Sprite::from_color(
+                    Color::srgba(0.86, 0.18, 0.22, 0.95),
+                    Vec2::new(ENEMY_HEALTH_BAR_WIDTH, ENEMY_HEALTH_BAR_HEIGHT),
+                );
+                fill_sprite.anchor = Anchor::CenterLeft;
+
+                parent.spawn((
+                    EnemyHealthBarFill,
+                    HealthBarTarget::new(enemy_entity),
+                    fill_sprite,
+                    Transform::from_translation(Vec3::new(-ENEMY_HEALTH_BAR_WIDTH / 2.0, 0.0, 1.0)),
+                    Name::new("EnemyHealthFill"),
+                ));
+            });
+    }
+}
+
+pub fn update_enemy_health_bar_positions(
+    mut commands: Commands,
+    owner_query: Query<&GlobalTransform>,
+    mut bar_query: Query<(Entity, &HealthBarFollow, &mut Transform), With<EnemyHealthBarRoot>>,
+) {
+    for (entity, follow, mut transform) in &mut bar_query {
+        match owner_query.get(follow.target) {
+            Ok(owner_transform) => {
+                let mut translation = owner_transform.translation();
+                translation += follow.offset;
+                transform.translation = translation;
+            }
+            Err(_) => {
+                commands.entity(entity).despawn();
+            }
+        }
+    }
+}
+
+pub fn update_enemy_health_bar_fill(
+    health_query: Query<&Health>,
+    mut fill_query: Query<(&HealthBarTarget, &mut Transform), With<EnemyHealthBarFill>>,
+) {
+    for (target, mut transform) in &mut fill_query {
+        let Ok(health) = health_query.get(target.target) else {
+            continue;
+        };
+
+        if health.max <= 0 {
+            transform.scale.x = 0.0;
+            continue;
+        }
+
+        let ratio = (health.current as f32).clamp(0.0, health.max as f32) / health.max as f32;
+        transform.scale.x = ratio.clamp(0.0, 1.0);
+    }
+}
+
+pub fn spawn_player_death_screen(
+    mut commands: Commands,
+    mut death_events: EventReader<PlayerDiedEvent>,
+    mut death_state: ResMut<PlayerDeathState>,
+    asset_server: Res<AssetServer>,
+) {
+    let mut triggered = false;
+    for _ in death_events.read() {
+        triggered = true;
+    }
+
+    if !triggered {
+        return;
+    }
+
+    if death_state.screen_entity.is_some() {
+        return;
+    }
+
+    let overlay_color = Color::srgba(
+        PLAYER_DEATH_OVERLAY_COLOR[0],
+        PLAYER_DEATH_OVERLAY_COLOR[1],
+        PLAYER_DEATH_OVERLAY_COLOR[2],
+        PLAYER_DEATH_OVERLAY_COLOR[3],
+    );
+
+    let text_color = Color::srgba(
+        PLAYER_DEATH_TEXT_COLOR[0],
+        PLAYER_DEATH_TEXT_COLOR[1],
+        PLAYER_DEATH_TEXT_COLOR[2],
+        PLAYER_DEATH_TEXT_COLOR[3],
+    );
+
+    let font_handle = asset_server.load(PLAYER_DEATH_FONT_PATH);
+
+    let root_entity = commands
+        .spawn((
+            DeathScreenRoot,
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                position_type: PositionType::Absolute,
+                top: Val::Px(0.0),
+                left: Val::Px(0.0),
+                display: Display::Flex,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..Default::default()
+            },
+            BackgroundColor(overlay_color),
+            Name::new("DeathScreenRoot"),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                DeathScreenText,
+                Text::new(PLAYER_DEATH_MESSAGE),
+                TextFont {
+                    font: font_handle.clone(),
+                    font_size: PLAYER_DEATH_FONT_SIZE,
+                    ..Default::default()
+                },
+                TextColor(text_color),
+                TextLayout::new_with_justify(JustifyText::Center),
+                Name::new("DeathScreenText"),
+            ));
+        })
+        .id();
+
+    death_state.screen_entity = Some(root_entity);
+}
+
+pub fn despawn_player_death_screen_on_respawn(
+    mut commands: Commands,
+    mut respawn_events: EventReader<PlayerRespawnedEvent>,
+    mut death_state: ResMut<PlayerDeathState>,
+) {
+    let mut triggered = false;
+    for _ in respawn_events.read() {
+        triggered = true;
+    }
+
+    if !triggered {
+        return;
+    }
+
+    if let Some(screen_entity) = death_state.screen_entity.take() {
+        commands.entity(screen_entity).despawn();
+    }
+
+    death_state.clear_screen();
+}
